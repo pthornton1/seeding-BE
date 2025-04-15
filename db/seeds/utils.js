@@ -1,4 +1,5 @@
 const db = require("../../db/connection");
+const format = require("pg-format");
 
 exports.convertTimestampToDate = ({ created_at, ...otherProperties }) => {
   if (!created_at) return { ...otherProperties };
@@ -63,11 +64,76 @@ exports.createTables = () => {
 };
 
 exports.insertData = ({ topicData, userData, articleData, commentData }) => {
-  // console.log(topicData[0].description);
-  return db.query(
-    `INSERT INTO topics (slug, description, img_url)
-    VALUES ('${topicData[0].slug}',
-    '${topicData[0].description}',
-    '${topicData[0].img_url}');`
+  const topicInsertArr = topicData.map((topic) => {
+    return [...Object.values(topic)];
+  });
+  const topicInsertQuery = format(
+    `INSERT INTO topics (description, slug, img_url) VALUES %L;`,
+    topicInsertArr
   );
+  return db
+    .query(topicInsertQuery)
+    .then(() => {
+      const userInsertArr = userData.map((user) => {
+        return [...Object.values(user)];
+      });
+      const userInsertQuery = format(
+        `INSERT INTO users (username, name, avatar_url) VALUES %L;`,
+        userInsertArr
+      );
+      return db.query(userInsertQuery);
+    })
+    .then(() => {
+      const articleInsertArr = articleData.map((article) => {
+        article.created_at = new Date(article.created_at).toISOString();
+        return [...Object.values(article)];
+      });
+
+      const articleInsertQuery = format(
+        `INSERT INTO articles (title, topic, author, body, created_at, votes, article_img_url) VALUES %L;`,
+        articleInsertArr
+      );
+      return db.query(articleInsertQuery);
+    })
+    .then(() => {
+      return insertComments(commentData);
+    });
 };
+
+function insertComments(commentData) {
+  const commentDataCopy = [...commentData];
+  const promiseArr = [];
+  commentDataCopy.forEach((comment) => {
+    const articleIdQuery = format(
+      `SELECT title, article_id 
+        FROM articles 
+        WHERE title = %L;`,
+      [comment.article_title]
+    );
+    promiseArr.push(db.query(articleIdQuery));
+  });
+  Promise.all(promiseArr).then((responses) => {
+    const commentInsertArr = commentDataCopy.map((comment) => {
+      const commentCopy = { ...comment };
+      const article_id = responses.find((response) => {
+        console.log(response);
+        return (response.rows[0].title = commentCopy.article_title);
+      }).rows[0].article_id;
+      commentCopy.article_id = article_id;
+      commentCopy.created_at = new Date(commentCopy.created_at).toISOString();
+      return [
+        commentCopy.article_id,
+        commentCopy.body,
+        commentCopy.votes,
+        commentCopy.author,
+        commentCopy.created_at,
+      ];
+    });
+    const commentInsertQuery = format(
+      `INSERT INTO comments (article_id, body, votes, author, created_at) VALUES %L;`,
+      commentInsertArr
+    );
+    console.log(commentInsertQuery);
+    return db.query(commentInsertQuery);
+  });
+}
