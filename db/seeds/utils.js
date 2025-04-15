@@ -112,7 +112,7 @@ function insertComments(commentData) {
     );
     promiseArr.push(db.query(articleIdQuery));
   });
-  Promise.all(promiseArr).then((responses) => {
+  return Promise.all(promiseArr).then((responses) => {
     const commentInsertArr = commentDataCopy.map((comment) => {
       const commentCopy = { ...comment };
       const article_id = responses.find((response) => {
