@@ -116,7 +116,6 @@ function insertComments(commentData) {
     const commentInsertArr = commentDataCopy.map((comment) => {
       const commentCopy = { ...comment };
       const article_id = responses.find((response) => {
-        console.log(response);
         return (response.rows[0].title = commentCopy.article_title);
       }).rows[0].article_id;
       commentCopy.article_id = article_id;
@@ -133,7 +132,6 @@ function insertComments(commentData) {
       `INSERT INTO comments (article_id, body, votes, author, created_at) VALUES %L;`,
       commentInsertArr
     );
-    console.log(commentInsertQuery);
     return db.query(commentInsertQuery);
   });
 }
