@@ -6,7 +6,7 @@ beforeAll(() => seed(data));
 afterAll(() => db.end());
 
 describe("seed", () => {
-  describe.only("topics table", () => {
+  describe("topics table", () => {
     test("topics table exists", () => {
       return db
         .query(
@@ -81,7 +81,7 @@ describe("seed", () => {
     });
   });
 
-  describe.only("users table", () => {
+  describe("users table", () => {
     test("users table exists", () => {
       return db
         .query(
@@ -155,7 +155,7 @@ describe("seed", () => {
     });
   });
 
-  describe.only("articles table", () => {
+  describe("articles table", () => {
     test("articles table exists", () => {
       return db
         .query(
@@ -373,7 +373,7 @@ describe("seed", () => {
     });
   });
 
-  describe.only("comments table", () => {
+  describe("comments table", () => {
     test("comments table exists", () => {
       return db
         .query(
@@ -563,7 +563,7 @@ describe("seed", () => {
   });
 });
 
-describe.only("data insertion", () => {
+describe("data insertion", () => {
   test("topics data has been inserted correctly", () => {
     return db.query(`SELECT * FROM topics;`).then(({ rows: topics }) => {
       expect(topics).toHaveLength(3);
