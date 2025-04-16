@@ -1,7 +1,7 @@
 const db = require("../../db/connection");
 const format = require("pg-format");
 
-exports.convertTimestampToDate = ({ created_at, ...otherProperties }) => {
+convertTimestampToDate = ({ created_at, ...otherProperties }) => {
   if (!created_at) return { ...otherProperties };
   return { created_at: new Date(created_at), ...otherProperties };
 };
@@ -85,53 +85,52 @@ exports.insertData = ({ topicData, userData, articleData, commentData }) => {
     })
     .then(() => {
       const articleInsertArr = articleData.map((article) => {
-        article.created_at = new Date(article.created_at).toISOString();
-        return [...Object.values(article)];
+        const updatedArticle = convertTimestampToDate(article);
+        return [
+          updatedArticle.title,
+          updatedArticle.topic,
+          updatedArticle.author,
+          updatedArticle.body,
+          updatedArticle.created_at,
+          updatedArticle.votes,
+          updatedArticle.article_img_url,
+        ];
       });
 
       const articleInsertQuery = format(
-        `INSERT INTO articles (title, topic, author, body, created_at, votes, article_img_url) VALUES %L;`,
+        `INSERT INTO articles 
+        (title, topic, author, body, created_at, votes, article_img_url)
+         VALUES %L
+         RETURNING *;`,
         articleInsertArr
       );
       return db.query(articleInsertQuery);
     })
-    .then(() => {
-      return insertComments(commentData);
+    .then((result) => {
+      const referenceObj = createRef(result.rows);
+      const commentInsertArr = commentData.map((comment) => {
+        const updatedComment = convertTimestampToDate(comment);
+        updatedComment.article_id = referenceObj[updatedComment.article_title];
+        return [
+          updatedComment.article_id,
+          updatedComment.body,
+          updatedComment.votes,
+          updatedComment.author,
+          updatedComment.created_at,
+        ];
+      });
+      const commentInsertQuery = format(
+        `INSERT INTO comments (article_id, body, votes, author, created_at) VALUES %L;`,
+        commentInsertArr
+      );
+      return db.query(commentInsertQuery);
     });
 };
 
-function insertComments(commentData) {
-  const commentDataCopy = [...commentData];
-  const promiseArr = [];
-  commentDataCopy.forEach((comment) => {
-    const articleIdQuery = format(
-      `SELECT title, article_id 
-        FROM articles 
-        WHERE title = %L;`,
-      [comment.article_title]
-    );
-    promiseArr.push(db.query(articleIdQuery));
+function createRef(articleRowsArr) {
+  refObj = {};
+  articleRowsArr.forEach((row) => {
+    refObj[row.title] = row.article_id;
   });
-  return Promise.all(promiseArr).then((responses) => {
-    const commentInsertArr = commentDataCopy.map((comment) => {
-      const commentCopy = { ...comment };
-      const article_id = responses.find((response) => {
-        return (response.rows[0].title = commentCopy.article_title);
-      }).rows[0].article_id;
-      commentCopy.article_id = article_id;
-      commentCopy.created_at = new Date(commentCopy.created_at).toISOString();
-      return [
-        commentCopy.article_id,
-        commentCopy.body,
-        commentCopy.votes,
-        commentCopy.author,
-        commentCopy.created_at,
-      ];
-    });
-    const commentInsertQuery = format(
-      `INSERT INTO comments (article_id, body, votes, author, created_at) VALUES %L;`,
-      commentInsertArr
-    );
-    return db.query(commentInsertQuery);
-  });
+  return refObj;
 }
