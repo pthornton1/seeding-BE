@@ -6,6 +6,8 @@ convertTimestampToDate = ({ created_at, ...otherProperties }) => {
   return { created_at: new Date(created_at), ...otherProperties };
 };
 
+exports.convertTimestampToDate = convertTimestampToDate;
+
 exports.dropTables = () => {
   return db
     .query(`DROP TABLE IF EXISTS comments;`)
