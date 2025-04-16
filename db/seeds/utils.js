@@ -109,6 +109,7 @@ exports.insertData = ({ topicData, userData, articleData, commentData }) => {
       return db.query(articleInsertQuery);
     })
     .then((result) => {
+      console.log(result.rows.slice(0, 2));
       const referenceObj = createRef(result.rows);
       const commentInsertArr = commentData.map((comment) => {
         const updatedComment = convertTimestampToDate(comment);
@@ -136,3 +137,5 @@ function createRef(articleRowsArr) {
   });
   return refObj;
 }
+
+exports.createRef = createRef;
